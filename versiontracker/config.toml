@@ -1,0 +1,11 @@
+[ignored_apps]
+apps = [
+    "BusyCal",
+    "Safari",
+    "Steam",
+    "Surge",
+]
+
+[identifier_mappings]
+"com.aone.keka" = "com.aone.kekaKeka"
+"com.cryptic-apps.hopper-web-4" = "com.cryptic-apps.hopper-web-4full"
