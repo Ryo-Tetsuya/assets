@@ -4,8 +4,8 @@
 log_file="/tmp/dns_failover.log"
 
 # Define the primary and backup DNS resolvers (DoH endpoints)
-primary_dns="https://dns.supercluster.io/dns-query/router"
-backup_dns="https://1.1.1.2/dns-query"
+primary_dns="https://dns.supercluster.io/query"
+backup_dns="https://9.9.9.9/dns-query"
 
 # Define the domain to be used for testing DNS resolution
 test_domain="google.com"
