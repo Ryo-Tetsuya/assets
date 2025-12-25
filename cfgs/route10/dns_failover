@@ -1,0 +1,32 @@
+#!/bin/sh
+
+log_file="/tmp/dns_failover.log"
+
+# Local DoH proxy target
+dns_proxy="127.0.0.1"
+dns_port="5053"
+
+# Domain to test
+test_domain="google.com"
+
+# Config paths for swapping
+primary_cfg="/cfg/https-dns-proxy"
+backup_cfg="/cfg/https-dns-proxy-bak"
+cfg_path="/etc/config/https-dns-proxy"
+
+# Use drill to confirm upstream DNS instead of cached
+check_dns_resolution() {
+    drill @"$dns_proxy" -p "$dns_port" "$test_domain" 2>/dev/null \
+    | grep -q "ANSWER SECTION"
+}
+
+# Check DNS health
+if check_dns_resolution; then
+    echo "$(date) - Primary DNS is back. switching to primary." >> "$log_file"
+    cp "$primary_cfg" "$cfg_path"
+    /etc/init.d/https-dns-proxy restart
+else
+    echo "$(date) - Primary DNS failed. switching to backup." >> "$log_file"
+    cp "$backup_cfg" "$cfg_path"
+    /etc/init.d/https-dns-proxy restart
+fi

@@ -19,6 +19,9 @@ ssdk_sh port flowCtrl set 4 disable
 ssdk_sh port flowCtrl set 5 disable
 ssdk_sh port flowCtrl set 6 disable
 
+# Wait for system services to be ready
+sleep 10
+
 # Apply custom DNS proxy configuration and restart service
 cp /cfg/https-dns-proxy /etc/config/https-dns-proxy
 /etc/init.d/https-dns-proxy restart
@@ -35,4 +38,7 @@ uci set network.wan.peerdns='0'
 uci commit network
 /etc/init.d/network reload
 
+# Add cron job for dns failover
 echo "* * * * * /cfg/dns_failover >> /tmp/dns_failover.log 2>&1" >> /etc/crontabs/root && /etc/init.d/cron reload
+
+exit 0
