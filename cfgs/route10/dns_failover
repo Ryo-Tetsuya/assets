@@ -1,0 +1,40 @@
+#!/bin/sh
+
+log_file="/tmp/dns_failover.log"
+
+dns_proxy="127.0.0.1"
+dns_port="5053"
+test_domain="google.com"
+
+primary_cfg="/cfg/https-dns-proxy"
+backup_cfg="/cfg/https-dns-proxy-bak"
+cfg_path="/etc/config/https-dns-proxy"
+
+current_state="primary"
+
+check_dns_resolution() {
+    drill @"$dns_proxy" -p "$dns_port" "$test_domain" 2>/dev/null \
+    | grep -q "ANSWER SECTION"
+}
+
+echo "$(date) - DNS Monitoring started (5s interval)" >> "$log_file"
+
+while true; do
+    if check_dns_resolution; then
+        if [ "$current_state" = "backup" ]; then
+            echo "$(date) - Primary DNS is back. Switching to primary." >> "$log_file"
+            cp "$primary_cfg" "$cfg_path"
+            /etc/init.d/https-dns-proxy restart
+            current_state="primary"
+        fi
+    else
+        if [ "$current_state" = "primary" ]; then
+            echo "$(date) - Primary DNS failed. Switching to backup." >> "$log_file"
+            cp "$backup_cfg" "$cfg_path"
+            /etc/init.d/https-dns-proxy restart
+            current_state="backup"
+        fi
+    fi
+
+    sleep 15
+done

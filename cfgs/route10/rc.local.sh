@@ -19,20 +19,36 @@ ssdk_sh port flowCtrl set 4 disable
 ssdk_sh port flowCtrl set 5 disable
 ssdk_sh port flowCtrl set 6 disable
 
-# Apply custom DNS proxy configuration and restart service
+# Block execution until WAN connectivity is confirmed
+while ! ping -c 1 -W 2 1.1.1.1 >/dev/null; do
+    sleep 2
+done
+
+# Synchronize system clock to enable SSL certificate validation
+/bin/busybox ntpd -q -n -p 162.159.200.1 >/dev/null 2>&1
+
+# Initialize DNS-over-HTTPS proxy with primary configuration
 cp /cfg/https-dns-proxy /etc/config/https-dns-proxy
 /etc/init.d/https-dns-proxy restart
 
-# Set dnsmasq to use only the custom DoH server (127.0.0.1#5053) and reload the service.
+# Configure Dnsmasq to forward queries to the local DoH listener
 uci delete dhcp.@dnsmasq[0].server
 uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5053'
 uci set dhcp.@dnsmasq[0].noresolv='1'
+
+# Map DoH endpoint to static IP to prevent resolution loops
+uci add dhcp domain
+uci set dhcp.@domain[-1].name='dns.supercluster.io'
+uci set dhcp.@domain[-1].ip='132.147.81.15'
 uci commit dhcp
 /etc/init.d/dnsmasq reload
 
-# Disable peer DNS, commit the change, and reload the network configuration.
+# Disable ISP DNS peering and refresh network interface
 uci set network.wan.peerdns='0'
 uci commit network
 /etc/init.d/network reload
 
-echo "* * * * * /cfg/dns_failover >> /tmp/dns_failover.log 2>&1" >> /etc/crontabs/root && /etc/init.d/cron reload
+# Start DNS health monitor daemon in the background
+/cfg/dns_failover &
+
+exit 0
