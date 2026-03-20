@@ -1,0 +1,69 @@
+name: Update gaming blocklist
+
+on:
+  schedule:
+    - cron: "0 0 * * *" # daily at 00:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Fetch and convert to Blocky wildcard format
+        run: |
+          curl -sL "https://raw.githubusercontent.com/arfshl/nextdns-blocklists/latest/subscriptions/gaming.txt" -o /tmp/source.txt
+
+          {
+            echo "# Auto-generated from arfshl/nextdns-blocklists (NextDNS Gaming)"
+            echo "# Converted to Blocky wildcard format (*.domain)"
+            echo "# Last updated: PLACEHOLDER"
+            echo ""
+            grep -v '^!' /tmp/source.txt \
+              | grep -v '^\[' \
+              | grep -v '^#' \
+              | grep -v '^$' \
+              | sed 's/^||//; s/\^$//' \
+              | grep -v -E '^([^.]+\.)?apps\.apple\.com$' \
+              | grep -v -E '^([^.]+\.)?steampowered\.com$' \
+              | grep -v -E '^([^.]+\.)?play\.google\.com$' \
+              | grep -v -E '^([^.]+\.)?is1-ssl\.mzstatic\.com$' \
+              | grep -v -E '^([^.]+\.)?steamstatic\.com$' \
+              | sort -u \
+              | sed 's/^/*./'
+          } > /tmp/blocklist_new.txt
+
+          # Compare domains only (skip header lines)
+          tail -n +5 /tmp/blocklist_new.txt > /tmp/new_domains.txt
+          tail -n +5 cfgs/blocky/games_blocklist.txt > /tmp/old_domains.txt
+
+          if diff -q /tmp/new_domains.txt /tmp/old_domains.txt > /dev/null 2>&1; then
+            echo "CHANGED=false" >> "$GITHUB_ENV"
+          else
+            sed -i "s/PLACEHOLDER/$(date -u '+%Y-%m-%d %H:%M UTC')/" /tmp/blocklist_new.txt
+            cp /tmp/blocklist_new.txt cfgs/blocky/games_blocklist.txt
+            echo "CHANGED=true" >> "$GITHUB_ENV"
+          fi
+
+      - name: Commit and push
+        if: env.CHANGED == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add cfgs/blocky/games_blocklist.txt
+          git commit -m "Update gaming blocklist from NextDNS"
+          git push
+
+      - name: Delete old workflow runs
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/actions/workflows/update-gaming-blocklist.yml/runs?per_page=100" \
+            --jq '.workflow_runs[] | select(.id != ${{ github.run_id }}) | .id' \
+            | xargs -I{} gh api -X DELETE "repos/${{ github.repository }}/actions/runs/{}" 2>/dev/null || true

@@ -1,0 +1,17 @@
+config main 'config'
+        option canary_domains_icloud '1'
+        option canary_domains_mozilla '1'
+        option force_dns '1'
+        list force_dns_port '53'
+        list force_dns_port '853'
+        option procd_trigger_wan6 '0'
+        option dnsmasq_config_update '-'
+
+
+config https-dns-proxy
+        option bootstrap_dns '9.9.9.9,149.112.112.112,1.1.1.2,1.0.0.2'
+        option resolver_url 'https://dns.supercluster.io/query'
+        option listen_addr '127.0.0.1'
+        option listen_port '5053'
+        option user 'nobody'
+        option group 'nogroup'
