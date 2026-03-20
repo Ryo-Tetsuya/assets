@@ -1,6 +1,6 @@
 # Auto-generated from arfshl/nextdns-blocklists (NextDNS Gaming)
 # Converted to Blocky wildcard format (*.domain)
-# Last updated: 2026-03-20 03:24 UTC
+# Last updated: 2026-03-20 04:56 UTC
 
 *.0000100.com
 *.007arcadegames.com
@@ -28453,7 +28453,6 @@
 *.stcware.com
 *.steaksandgame.com
 *.stealth-gamer.com
-*.steam-chat.com
 *.steam-trek.com
 *.steambans.com
 *.steambuy.com
@@ -28461,8 +28460,6 @@
 *.steamchina.com
 *.steamcloud-sydney.storage.googleapis.com
 *.steamclouduseast2.blob.core.windows.net
-*.steamcommunity.com
-*.steamcontent.com
 *.steamdb.info
 *.steamdeck.com
 *.steamforged.com
@@ -28474,11 +28471,9 @@
 *.steampower1830.com
 *.steampowered.com.8686c.com
 *.steamrollerstudios.com
-*.steamserver.net
 *.steamsplay.com
 *.steamstatic.com.8686c.com
 *.steamunlocked.net
-*.steamusercontent.com
 *.steamworldgames.com
 *.steel-mastery.com
 *.steelbeasts.com
