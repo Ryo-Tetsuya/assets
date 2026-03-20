@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadType</key>
+  <string>Configuration</string>
+  <key>PayloadVersion</key>
+  <integer>1</integer>
+  <key>PayloadIdentifier</key>
+  <string>com.supercluster.dnsprofile</string>
+  <key>PayloadUUID</key>
+  <string>DD8B3A5E-4041-4115-ABF2-68D8972F0DDD</string>
+  <key>PayloadDisplayName</key>
+  <string>Supercluster</string>
+  <key>PayloadDescription</key>
+  <string>Forces DNS over HTTPS to dns.supercluster.io on all networks.</string>
+  <key>PayloadOrganization</key>
+  <string>Supercluster Inc.</string>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>PayloadType</key>
+      <string>com.apple.dnsSettings.managed</string>
+      <key>PayloadVersion</key>
+      <integer>1</integer>
+      <key>PayloadIdentifier</key>
+      <string>com.supercluster.dnsprofile.dns</string>
+      <key>PayloadUUID</key>
+      <string>FABA6E20-60A1-4C22-B67C-3EA2FFE2D820</string>
+      <key>PayloadDisplayName</key>
+      <string>Supercluster DNS</string>
+      <key>DNSSettings</key>
+      <dict>
+        <key>DNSProtocol</key>
+        <string>HTTPS</string>
+        <key>ServerAddresses</key>
+        <array>
+        </array>
+        <key>ServerURL</key>
+        <string>https://dns.supercluster.io/query</string>
+        <key>BootstrapServers</key>
+        <array>
+        <string>1.1.1.1</string>
+        <string>1.0.0.2</string>
+        </array>
+      </dict>
+    </dict>
+  </array>
+</dict>
+</plist>
