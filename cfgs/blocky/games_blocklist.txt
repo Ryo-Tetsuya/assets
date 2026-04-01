@@ -1,6 +1,6 @@
 # Auto-generated from arfshl/nextdns-blocklists (NextDNS Gaming)
 # Converted to Blocky wildcard format (*.domain)
-# Last updated: 2026-03-20 04:56 UTC
+# Last updated: 2026-04-01 02:13 UTC
 
 *.0000100.com
 *.007arcadegames.com
@@ -19592,6 +19592,7 @@
 *.minecraft-wiki.com
 *.minecraft-wikipedia.ru
 *.minecraft-zlauncher.ru
+*.minecraft.best
 *.minecraft.codeemo.com
 *.minecraft.codeplex.com
 *.minecraft.decx.org
