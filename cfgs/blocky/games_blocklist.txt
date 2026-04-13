@@ -1,6 +1,6 @@
 # Auto-generated from arfshl/nextdns-blocklists (NextDNS Gaming)
 # Converted to Blocky wildcard format (*.domain)
-# Last updated: 2026-04-06 02:10 UTC
+# Last updated: 2026-04-13 02:25 UTC
 
 *.0000100.com
 *.007arcadegames.com
@@ -27973,6 +27973,7 @@
 *.spartangames.co.uk
 *.spartans.org.uk
 *.sparxmaths.uk
+*.spawnd.gg
 *.spawnstudios.com
 *.spaziogames.it
 *.spcineplay.com.br
