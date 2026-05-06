@@ -1,6 +1,6 @@
 # Auto-generated from arfshl/nextdns-blocklists (NextDNS Gaming)
 # Converted to Blocky wildcard format (*.domain)
-# Last updated: 2026-04-13 02:25 UTC
+# Last updated: 2026-05-06 02:34 UTC
 
 *.0000100.com
 *.007arcadegames.com
@@ -24152,7 +24152,6 @@
 *.playworks.org
 *.playworksonline.com
 *.playworld.com
-*.playwright.dev
 *.playwrightscanada.com
 *.playwrightsguild.ca
 *.playwrightshorizons.org
