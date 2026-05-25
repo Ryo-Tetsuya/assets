@@ -8929,7 +8929,6 @@
 *.filecrypt.co
 *.filefactory.org
 *.filefront.com
-*.filelist.io
 *.fileplanet.com
 *.fileplay.net
 *.files-2.tomsgames.net

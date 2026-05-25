@@ -39,6 +39,7 @@ jobs:
               | grep -v -E '^([^.]+\.)?steam-chat\.com$' \
               | grep -v -E '^([^.]+\.)?play\.google\.com$' \
               | grep -v -E '^([^.]+\.)?is1-ssl\.mzstatic\.com$' \
+              | grep -v -E '^([^.]+\.)?filelist\.io$' \
               | grep -v -E '^([^.]+\.)?panic\.com$' \
               | sort -u \
               | sed 's/^/*./'
