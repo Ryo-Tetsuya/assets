@@ -28457,16 +28457,10 @@
 *.steambans.com
 *.steambuy.com
 *.steamcharts.com
-*.steamchina.com
-*.steamcloud-sydney.storage.googleapis.com
-*.steamclouduseast2.blob.core.windows.net
 *.steamdb.info
-*.steamdeck.com
 *.steamforged.com
 *.steamforlinux.com
-*.steamgames.com
 *.steamgifts.com
-*.steampipe.akamaized.net
 *.steamplay.ru
 *.steampower1830.com
 *.steampowered.com.8686c.com
@@ -31521,8 +31515,6 @@
 *.valottery.com
 *.valsoft.us
 *.valusoft.com
-*.valve.net
-*.valvesoftware.com
 *.vampire-ville.com
 *.vampiregenesis.com
 *.vampirejourneys.4mg.com

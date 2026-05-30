@@ -32,11 +32,19 @@ jobs:
               | grep -v -E '^([^.]+\.)?apps\.apple\.com$' \
               | grep -v -E '^([^.]+\.)?steampowered\.com$' \
               | grep -v -E '^([^.]+\.)?steamcommunity\.com$' \
+              | grep -v -E '^([^.]+\.)?steamgames\.com$' \
               | grep -v -E '^([^.]+\.)?steamcontent\.com$' \
               | grep -v -E '^([^.]+\.)?steamserver\.net$' \
               | grep -v -E '^([^.]+\.)?steamstatic\.com$' \
               | grep -v -E '^([^.]+\.)?steamusercontent\.com$' \
               | grep -v -E '^([^.]+\.)?steam-chat\.com$' \
+              | grep -v -E '^([^.]+\.)?steamchina\.com$' \
+              | grep -v -E '^([^.]+\.)?steamdeck\.com$' \
+              | grep -v -E '^steampipe\.akamaized\.net$' \
+              | grep -v -E '^steamcloud-[^.]+\.storage\.googleapis\.com$' \
+              | grep -v -E '^steamcloud[^.]*\.blob\.core\.windows\.net$' \
+              | grep -v -E '^([^.]+\.)?valve\.net$' \
+              | grep -v -E '^([^.]+\.)?valvesoftware\.com$' \
               | grep -v -E '^([^.]+\.)?play\.google\.com$' \
               | grep -v -E '^([^.]+\.)?is1-ssl\.mzstatic\.com$' \
               | grep -v -E '^([^.]+\.)?filelist\.io$' \
