@@ -1,0 +1,71 @@
+#!/bin/sh
+
+# Port mappings for the device
+# Port | Interface | SSDK Port Number | Manufacturer Label
+# ---------------------------------------------------------------
+# 1    | eth3      | 4                | WAN1
+# 2    | eth2      | 3                | LAN1
+# 3    | eth1      | 2                | LAN2
+# 4    | eth0      | 1                | LAN3
+# 5    | eth5      | 6                | LAN4
+# 6    | eth4      | 5                | WAN2
+
+# Disable flow control on specific ports.
+ssdk_sh flow status set 0
+ssdk_sh port flowCtrl set 1 disable
+ssdk_sh port flowCtrl set 2 enable
+ssdk_sh port flowCtrl set 3 disable
+ssdk_sh port flowCtrl set 4 disable
+ssdk_sh port flowCtrl set 5 disable
+ssdk_sh port flowCtrl set 6 disable
+
+get_wan_ipv4() {
+    ubus call network.interface.wan status 2>/dev/null \
+        | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null \
+        | head -n 1
+}
+
+# Block execution until WAN connectivity is confirmed.
+while ! ping -c 1 -W 2 1.1.1.1 >/dev/null; do
+    sleep 2
+done
+
+# Block execution until WAN IPv4 is available.
+wan_ip="$(get_wan_ipv4)"
+
+while [ -z "$wan_ip" ]; do
+    sleep 2
+    wan_ip="$(get_wan_ipv4)"
+done
+
+# Synchronize system clock for TLS validation.
+busybox ntpd -q -n -p 162.159.200.1 >/dev/null 2>&1
+
+# Disable ISP DNS peering.
+uci set network.wan.peerdns='0'
+uci commit network
+
+# Configure Dnsmasq forwarding.
+uci -q delete dhcp.@dnsmasq[0].server
+uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#5053'
+uci set dhcp.@dnsmasq[0].noresolv='1'
+
+# Configure static DoH endpoint mapping.
+uci -q delete dhcp.doh_endpoint
+uci set dhcp.doh_endpoint='domain'
+uci set dhcp.doh_endpoint.name='dns.supercluster.io'
+uci set dhcp.doh_endpoint.ip="$wan_ip"
+
+uci commit dhcp
+/etc/init.d/dnsmasq reload
+
+# Initialize DNS-over-HTTPS proxy with primary configuration.
+cp /cfg/https-dns-proxy /etc/config/https-dns-proxy
+/etc/init.d/https-dns-proxy restart
+
+# Start DNS health monitor daemon.
+if [ -x /cfg/dns_failover ]; then
+    /cfg/dns_failover &
+fi
+
+exit 0

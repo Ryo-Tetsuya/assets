@@ -1,40 +1,293 @@
 #!/bin/sh
 
 log_file="/tmp/dns_failover.log"
+pid_file="/tmp/dns_failover.pid"
 
 dns_proxy="127.0.0.1"
 dns_port="5053"
+
 test_domain="google.com"
 
 primary_cfg="/cfg/https-dns-proxy"
 backup_cfg="/cfg/https-dns-proxy-bak"
 cfg_path="/etc/config/https-dns-proxy"
 
+primary_doh_url="https://dns.supercluster.io/query"
+primary_doh_host="dns.supercluster.io"
+primary_doh_ip=""
+
+sleep_interval=2
+settle_time=1
+
+fail_needed=2
+recover_needed=2
+recover_interval=5
+
 current_state="primary"
+fail_count=0
+recover_count=0
+last_recover_probe=0
 
-check_dns_resolution() {
-    drill @"$dns_proxy" -p "$dns_port" "$test_domain" 2>/dev/null \
-    | grep -q "ANSWER SECTION"
-}
+log_max_kb=256
 
-echo "$(date) - DNS Monitoring started (5s interval)" >> "$log_file"
-
-while true; do
-    if check_dns_resolution; then
-        if [ "$current_state" = "backup" ]; then
-            echo "$(date) - Primary DNS is back. Switching to primary." >> "$log_file"
-            cp "$primary_cfg" "$cfg_path"
-            /etc/init.d/https-dns-proxy restart
-            current_state="primary"
-        fi
-    else
-        if [ "$current_state" = "primary" ]; then
-            echo "$(date) - Primary DNS failed. Switching to backup." >> "$log_file"
-            cp "$backup_cfg" "$cfg_path"
-            /etc/init.d/https-dns-proxy restart
-            current_state="backup"
+log() {
+    if [ -f "$log_file" ]; then
+        size_kb="$(du -k "$log_file" 2>/dev/null | awk '{print $1}')"
+        if [ -n "$size_kb" ] && [ "$size_kb" -gt "$log_max_kb" ]; then
+            mv "$log_file" "$log_file.1" 2>/dev/null
         fi
     fi
 
-    sleep 15
+    echo "$(date) - $*" >> "$log_file"
+}
+
+cleanup() {
+    rm -f "$pid_file"
+    trap - INT TERM EXIT
+    exit
+}
+
+# Single-instance process lock.
+if [ -f "$pid_file" ] && kill -0 "$(cat "$pid_file")" 2>/dev/null; then
+    echo "dns_failover is already running with PID $(cat "$pid_file")"
+    exit 1
+fi
+
+echo $$ > "$pid_file"
+trap cleanup INT TERM EXIT
+
+require_cmd() {
+    cmd="$1"
+
+    if ! command -v "$cmd" >/dev/null 2>&1; then
+        echo "Missing required command: $cmd"
+        log "ERROR: missing required command: $cmd"
+        exit 1
+    fi
+}
+
+require_file() {
+    file="$1"
+
+    if [ ! -f "$file" ]; then
+        echo "Missing required file: $file"
+        log "ERROR: missing required file: $file"
+        exit 1
+    fi
+}
+
+require_cmd drill
+require_cmd curl
+require_cmd hexdump
+require_cmd ubus
+require_cmd jsonfilter
+
+require_file "$primary_cfg"
+require_file "$backup_cfg"
+
+get_primary_doh_ip() {
+    ubus call network.interface.wan status 2>/dev/null \
+        | jsonfilter -e '@["ipv4-address"][0].address' 2>/dev/null \
+        | head -n 1
+}
+
+refresh_primary_doh_ip() {
+    detected_ip="$(get_primary_doh_ip)"
+
+    if [ -n "$detected_ip" ]; then
+        if [ "$primary_doh_ip" != "$detected_ip" ]; then
+            primary_doh_ip="$detected_ip"
+            log "Primary DoH IP updated: $primary_doh_ip"
+        else
+            primary_doh_ip="$detected_ip"
+        fi
+
+        return 0
+    fi
+
+    primary_doh_ip=""
+    log "Primary DoH IP detection failed."
+    return 1
+}
+
+check_dns_resolution() {
+    drill @"$dns_proxy" -p "$dns_port" "$test_domain" A 2>/dev/null \
+        | grep -q "ANSWER SECTION"
+}
+
+make_dns_query() {
+    domain="$1"
+    out="$2"
+
+    # DNS header: ID 0x1234, standard query, QDCOUNT=1.
+    printf '\022\064\001\000\000\001\000\000\000\000\000\000' > "$out"
+
+    old_ifs="$IFS"
+    IFS='.'
+    set -- $domain
+    IFS="$old_ifs"
+
+    for label in "$@"; do
+        len=${#label}
+        printf "\\$(printf '%03o' "$len")%s" "$label" >> "$out"
+    done
+
+    # QNAME terminator, QTYPE=A, QCLASS=IN.
+    printf '\000\000\001\000\001' >> "$out"
+}
+
+check_primary_doh_direct() {
+    req="/tmp/doh_req.$$"
+    resp="/tmp/doh_resp.$$"
+
+    make_dns_query "$test_domain" "$req"
+
+    if [ -n "$primary_doh_ip" ]; then
+        http_code="$(
+            curl -sS \
+                --connect-timeout 2 \
+                --max-time 4 \
+                --resolve "$primary_doh_host:443:$primary_doh_ip" \
+                -H "accept: application/dns-message" \
+                -H "content-type: application/dns-message" \
+                --data-binary "@$req" \
+                -o "$resp" \
+                -w "%{http_code}" \
+                "$primary_doh_url" 2>/dev/null
+        )"
+    else
+        http_code="$(
+            curl -sS \
+                --connect-timeout 2 \
+                --max-time 4 \
+                -H "accept: application/dns-message" \
+                -H "content-type: application/dns-message" \
+                --data-binary "@$req" \
+                -o "$resp" \
+                -w "%{http_code}" \
+                "$primary_doh_url" 2>/dev/null
+        )"
+    fi
+
+    size="$(wc -c < "$resp" 2>/dev/null)"
+    id_hex="$(hexdump -n 2 -e '2/1 "%02x"' "$resp" 2>/dev/null)"
+
+    rm -f "$req" "$resp"
+
+    [ "$http_code" = "200" ] && [ "$size" -ge 12 ] && [ "$id_hex" = "1234" ]
+}
+
+apply_cfg() {
+    src="$1"
+
+    if ! cp "$src" "$cfg_path"; then
+        log "ERROR: failed to copy $src to $cfg_path"
+        return 1
+    fi
+
+    if ! /etc/init.d/https-dns-proxy restart >/dev/null 2>&1; then
+        log "ERROR: failed to restart https-dns-proxy"
+        return 1
+    fi
+
+    sleep "$settle_time"
+    return 0
+}
+
+switch_to_backup() {
+    log "Primary production DNS failed $fail_count/$fail_needed. Activating backup."
+
+    if apply_cfg "$backup_cfg"; then
+        current_state="backup"
+        fail_count=0
+        recover_count=0
+        last_recover_probe="$(date +%s)"
+        log "Backup DNS active on $dns_proxy:$dns_port."
+    else
+        log "ERROR: backup activation failed."
+    fi
+}
+
+switch_to_primary() {
+    log "Primary direct DoH recovery confirmed. Activating primary."
+
+    if apply_cfg "$primary_cfg" && check_dns_resolution; then
+        current_state="primary"
+        fail_count=0
+        recover_count=0
+        log "Primary DNS active on $dns_proxy:$dns_port."
+    else
+        log "Primary production validation failed after activation. Reverting to backup."
+        apply_cfg "$backup_cfg"
+        current_state="backup"
+        fail_count=0
+        recover_count=0
+        last_recover_probe="$(date +%s)"
+    fi
+}
+
+log "DNS failover monitor started."
+log "Production probe: $dns_proxy:$dns_port, domain=$test_domain"
+log "Primary DoH probe: $primary_doh_url, domain=$test_domain"
+
+refresh_primary_doh_ip
+
+# Initial primary activation.
+if apply_cfg "$primary_cfg" && check_dns_resolution; then
+    current_state="primary"
+    log "Initial state: primary active."
+else
+    log "Initial primary validation failed. Activating backup."
+    if apply_cfg "$backup_cfg"; then
+        current_state="backup"
+        last_recover_probe="$(date +%s)"
+        log "Initial state: backup active."
+    else
+        log "ERROR: initial backup activation failed."
+        exit 1
+    fi
+fi
+
+while true; do
+    if [ "$current_state" = "primary" ]; then
+
+        if check_dns_resolution; then
+            fail_count=0
+        else
+            fail_count=$((fail_count + 1))
+            log "Primary production probe failed $fail_count/$fail_needed."
+
+            if [ "$fail_count" -ge "$fail_needed" ]; then
+                switch_to_backup
+            fi
+        fi
+
+    else
+        now="$(date +%s)"
+
+        if [ $((now - last_recover_probe)) -ge "$recover_interval" ]; then
+            last_recover_probe="$now"
+
+            refresh_primary_doh_ip
+
+            if check_primary_doh_direct; then
+                recover_count=$((recover_count + 1))
+                log "Primary direct DoH probe passed $recover_count/$recover_needed."
+
+                if [ "$recover_count" -ge "$recover_needed" ]; then
+                    switch_to_primary
+                fi
+            else
+                if [ "$recover_count" -ne 0 ]; then
+                    log "Primary direct DoH probe failed. Recovery counter reset."
+                else
+                    log "Primary direct DoH probe failed. Backup retained."
+                fi
+
+                recover_count=0
+            fi
+        fi
+    fi
+
+    sleep "$sleep_interval"
 done
