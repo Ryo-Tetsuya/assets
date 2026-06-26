@@ -1,6 +1,6 @@
 # Auto-generated from arfshl/nextdns-blocklists (NextDNS Gaming)
 # Converted to Blocky wildcard format (*.domain)
-# Last updated: 2026-05-06 02:34 UTC
+# Last updated: 2026-06-26 03:22 UTC
 
 *.0000100.com
 *.007arcadegames.com
@@ -22359,7 +22359,6 @@
 *.pangeasoft.net
 *.pangenre.com
 *.panhistoria.com
-*.panic.com
 *.panicartstudios.com
 *.panicball.com
 *.panicbarn.com
